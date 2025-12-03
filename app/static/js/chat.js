@@ -1,0 +1,235 @@
+// Chat functionality
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const sendButton = document.getElementById('sendButton');
+const logContent = document.getElementById('logContent');
+const clearLogButton = document.getElementById('clearLogButton');
+
+// Auto-resize textarea
+chatInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+});
+
+// Send message on Enter (Shift+Enter for new line)
+chatInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// Send button click handler
+sendButton.addEventListener('click', sendMessage);
+
+// Clear log button handler
+clearLogButton.addEventListener('click', clearLog);
+
+function sendMessage() {
+    const message = chatInput.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    addMessage(message, 'user');
+    
+    // Clear input
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    
+    // Disable input while processing
+    setInputState(false);
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    // Send message to backend
+    fetch('/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Remove typing indicator
+        removeTypingIndicator();
+        
+        // Add bot response
+        if (data.status === 'success') {
+            addMessage(data.message, 'bot');
+            
+            // Add tool logs if any
+            if (data.tool_logs && data.tool_logs.length > 0) {
+                data.tool_logs.forEach(log => {
+                    addToolLog(log);
+                });
+            }
+        } else {
+            addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+        }
+        
+        // Re-enable input
+        setInputState(true);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        removeTypingIndicator();
+        addMessage('Sorry, I encountered an error connecting to the server.', 'bot');
+        setInputState(true);
+    });
+}
+
+function addMessage(text, type) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'message-avatar';
+    
+    // Add appropriate icon
+    if (type === 'bot') {
+        avatarDiv.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8V4H8"/>
+                <rect width="16" height="12" x="4" y="8" rx="2"/>
+                <path d="M2 14h2"/>
+                <path d="M20 14h2"/>
+                <path d="M15 13v2"/>
+                <path d="M9 13v2"/>
+            </svg>
+        `;
+    } else {
+        avatarDiv.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+        `;
+    }
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.innerHTML = `<p>${escapeHtml(text)}</p>`;
+    
+    messageDiv.appendChild(avatarDiv);
+    messageDiv.appendChild(contentDiv);
+    
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+}
+
+function showTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message bot-message';
+    typingDiv.id = 'typingIndicator';
+    
+    typingDiv.innerHTML = `
+        <div class="message-avatar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8V4H8"/>
+                <rect width="16" height="12" x="4" y="8" rx="2"/>
+                <path d="M2 14h2"/>
+                <path d="M20 14h2"/>
+                <path d="M15 13v2"/>
+                <path d="M9 13v2"/>
+            </svg>
+        </div>
+        <div class="message-content">
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    `;
+    
+    chatMessages.appendChild(typingDiv);
+    scrollToBottom();
+}
+
+function removeTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+}
+
+function setInputState(enabled) {
+    chatInput.disabled = !enabled;
+    sendButton.disabled = !enabled;
+    if (enabled) {
+        chatInput.focus();
+    }
+}
+
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function addToolLog(log) {
+    // Remove empty state if present
+    const emptyState = logContent.querySelector('.log-empty');
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
+    
+    const timestamp = new Date().toLocaleTimeString();
+    
+    let logHTML = `
+        <div class="log-timestamp">${timestamp}</div>
+        <div class="log-tool">
+            <span class="log-label">Tool:</span> ${escapeHtml(log.tool)}
+        </div>
+    `;
+    
+    if (log.args) {
+        logHTML += `
+            <div class="log-args">
+                <span class="log-label">Args:</span> ${escapeHtml(JSON.stringify(log.args, null, 2))}
+            </div>
+        `;
+    }
+    
+    if (log.result) {
+        logHTML += `
+            <div class="log-result">
+                <span class="log-label">Result:</span><br>${escapeHtml(log.result)}
+            </div>
+        `;
+    }
+    
+    logEntry.innerHTML = logHTML;
+    logContent.appendChild(logEntry);
+    
+    // Scroll to bottom of log
+    logContent.scrollTop = logContent.scrollHeight;
+}
+
+function clearLog() {
+    logContent.innerHTML = `
+        <div class="log-empty">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <p>No tool calls yet</p>
+        </div>
+    `;
+}
+
+// Focus input on load
+window.addEventListener('load', () => {
+    chatInput.focus();
+});
