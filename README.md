@@ -166,10 +166,6 @@ This project is developed as part of CS 4701 coursework at Cornell University.
 
 ---
 
-- LangChain community for documentation and examples
-
----
-
 **Built with ❤️ at Cornell University**
 
 *Last Updated: December 2025*
