@@ -23,7 +23,7 @@ from langchain.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 # --- IMPORT YOUR TOOLS ---
-from src.tools.stock_tools import get_stock_price, get_multiple_stock_prices
+from src.tools.stock_tools import get_stock_price, get_multiple_stock_prices, get_portfolio_value, get_stock_volatility, get_stock_beta, get_portfolio_diversification, rebalance_equal_weight
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'my-chatbot-secret-key-2025')
@@ -50,6 +50,36 @@ def fetch_multiple_stock_prices(tickers: str) -> dict:
         tickers = [t.strip().upper() for t in tickers.replace("[", "").replace("]", "").replace("'", "").split(",")]
     return get_multiple_stock_prices(tickers)
 
+@tool("get_stock_volatility", return_direct=False)
+def fetch_stock_volatility(ticker: str) -> dict:
+    """Gets annualized volatility of a stock."""
+    return get_stock_volatility(ticker)
+
+
+@tool("get_stock_beta", return_direct=False)
+def fetch_stock_beta(ticker: str) -> dict:
+    """Gets beta of a stock vs the market."""
+    return get_stock_beta(ticker)
+
+
+@tool("get_portfolio_value", return_direct=False)
+def fetch_portfolio_value(portfolio: dict) -> dict:
+    """Gets total market value of a portfolio."""
+    return get_portfolio_value(portfolio)
+
+
+@tool("get_portfolio_diversification", return_direct=False)
+def fetch_portfolio_diversification(portfolio: dict) -> dict:
+    """Computes portfolio diversification score."""
+    return get_portfolio_diversification(portfolio)
+
+
+@tool("rebalance_equal_weight", return_direct=False)
+def fetch_rebalance_equal_weight(portfolio: dict) -> dict:
+    """Suggests equal-weight rebalancing."""
+    return rebalance_equal_weight(portfolio)
+
+
 
 # --- INITIALIZE AGENT ---
 
@@ -61,7 +91,11 @@ def create_agent():
 
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
-    tools = [fetch_stock_price, fetch_multiple_stock_prices]
+    tools = [fetch_stock_price, fetch_multiple_stock_prices, fetch_stock_volatility,        # ✅ new
+    fetch_stock_beta,
+    fetch_portfolio_value,
+    fetch_portfolio_diversification,
+    fetch_rebalance_equal_weight]
     
     # Bind tools to the LLM for function calling
     llm_with_tools = llm.bind_tools(tools)
@@ -74,7 +108,12 @@ try:
     llm_with_tools = create_agent()
     tools_map = {
         "get_stock_price": fetch_stock_price,
-        "get_multiple_stock_prices": fetch_multiple_stock_prices
+        "get_multiple_stock_prices": fetch_multiple_stock_prices,
+        "get_stock_volatility": fetch_stock_volatility,       
+        "get_stock_beta": fetch_stock_beta,
+        "get_portfolio_value": fetch_portfolio_value,
+        "get_portfolio_diversification": fetch_portfolio_diversification,
+        "rebalance_equal_weight": fetch_rebalance_equal_weight
     }
 except Exception as e:
     print(f"Warning: Could not initialize agent: {e}")
@@ -140,6 +179,21 @@ def chat():
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
                 tool_call_id = tool_call["id"]
+
+                # need to remove this later once we have memory
+                if tool_name in [
+                    "get_portfolio_diversification",
+                    "get_portfolio_value",
+                    "rebalance_equal_weight"
+                ]:
+                    # If the model forgot to pass it, inject it manually
+                    if "portfolio" not in tool_args or not tool_args["portfolio"]:
+                        tool_args["portfolio"] = {
+                            "VOO": 10,
+                            "AAPL": 20,
+                            "QQQ": 10
+                        }
+
                 
                 # Log tool call
                 tool_logs.append({
