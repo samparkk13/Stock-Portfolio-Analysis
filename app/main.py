@@ -118,21 +118,42 @@ def chat_with_agent(llm_with_tools):
         "rebalance_equal_weight": fetch_rebalance_equal_weight
     }
 
+    # --- INITIALIZE CONVERSATION HISTORY ---
+    conversation_history = []
+    print("[SYSTEM] Conversation history initialized.\n")
+
     while True:
         user_input = input("You: ").strip()
+
+        # Check for exit commands
         if user_input.lower() in {"exit", "quit"}:
-            print("Goodbye!")
+            print(f"\n[SYSTEM] Session ended. Total messages exchanged: {len(conversation_history)}")
+            print("Goodbye! 👋")
             break
+        
+        # Check for reset command
+        if user_input.lower() in {"reset", "clear", "new"}:
+            conversation_history = []
+            print("\n[SYSTEM] ✅ Conversation history cleared. Starting fresh!\n")
+            continue
+        
+        # Skip empty inputs
+        if not user_input:
+            continue
+
         try:
-            # Invoke the LLM with the user's question
-            response = llm_with_tools.invoke([HumanMessage(content=user_input)])
+             # --- ADD USER MESSAGE TO HISTORY ---
+            conversation_history.append(HumanMessage(content=user_input))
+
+            # --- INVOKE LLM WITH FULL CONVERSATION HISTORY ---
+            response = llm_with_tools.invoke(conversation_history)
             
             # Check if the model wants to call a tool
             if response.tool_calls:
                 print("\n[Agent is fetching stock data...]\n")
                 
                 # Build the message history with proper ToolMessage objects
-                messages = [HumanMessage(content=user_input), response]
+                conversation_history.append(response)
                 
                 for tool_call in response.tool_calls:
                     tool_name = tool_call["name"]
@@ -145,20 +166,31 @@ def chat_with_agent(llm_with_tools):
                         result = tools_map[tool_name].invoke(tool_args)
                         print(f"📊 {result}\n")
                         
-                        # Add ToolMessage with the result and matching tool_call_id
-                        messages.append(
+                        # Add ToolMessage to conversation history
+                        conversation_history.append(
                             ToolMessage(
                                 content=str(result),
                                 tool_call_id=tool_call_id
                             )
                         )
                 
-                # Get final response from LLM with tool results
-                final_response = llm_with_tools.invoke(messages)
+                # Get final response from LLM with full conversation context
+                final_response = llm_with_tools.invoke(conversation_history)
+                
+                # Add final response to history
+                conversation_history.append(final_response)
+                
                 print(f"Bot: {final_response.content}\n")
             else:
                 # Direct response without tool calls
+                # Add the response to history
+                conversation_history.append(response)
+                
                 print(f"Bot: {response.content}\n")
+            
+            # Show conversation length (for debugging)
+            print(f"[History: {len(conversation_history)} messages total]")
+            print()
                 
         except Exception as e:
             print(f"❌ Error: {e}\n")
