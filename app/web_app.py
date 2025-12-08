@@ -2,9 +2,10 @@
 Flask web application for Stock Portfolio Chatbot.
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 import os
 import sys
+import uuid
 
 # Add parent directory to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -25,6 +26,7 @@ from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from src.tools.stock_tools import get_stock_price, get_multiple_stock_prices
 
 app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'my-chatbot-secret-key-2025')
 
 # --- DEFINE TOOL WRAPPERS FOR LANGCHAIN ---
 
@@ -85,7 +87,7 @@ def index():
     """Render the main chatbot page."""
     return render_template('index.html')
 
-
+conversations = {}
 @app.route('/chat', methods=['POST'])
 def chat():
     """Handle chat messages from the frontend."""
@@ -105,8 +107,25 @@ def chat():
         }), 500
     
     try:
+        # --- SESSION MANAGEMENT ---
+        # Get or create a unique conversation ID for this user's session
+        if 'conversation_id' not in session:
+            session['conversation_id'] = str(uuid.uuid4())
+            print(f"[NEW SESSION] Created conversation ID: {session['conversation_id']}")
+        
+        conv_id = session['conversation_id']
+        
+        # Initialize conversation history if this is a new conversation
+        if conv_id not in conversations:
+            conversations[conv_id] = []
+            print(f"[NEW CONVERSATION] Initialized history for {conv_id}")
+        
+        # Add user message to conversation history
+        conversations[conv_id].append(HumanMessage(content=user_message))
+        print(f"[HISTORY] Added user message. Total messages: {len(conversations[conv_id])}")
+
         # Invoke the LLM with the user's question
-        response = llm_with_tools.invoke([HumanMessage(content=user_message)])
+        response = llm_with_tools.invoke(conversations[conv_id])
         
         # Track tool calls for logging
         tool_logs = []
@@ -114,6 +133,7 @@ def chat():
         # Check if the model wants to call a tool
         if response.tool_calls:
             # Build the message history with proper ToolMessage objects
+            conversations[conv_id].append(response)
             messages = [HumanMessage(content=user_message), response]
             
             for tool_call in response.tool_calls:
@@ -132,9 +152,8 @@ def chat():
                     
                     # Add result to log
                     tool_logs[-1]['result'] = str(result)
-                    
-                    # Add ToolMessage with the result and matching tool_call_id
-                    messages.append(
+
+                    conversations[conv_id].append(
                         ToolMessage(
                             content=str(result),
                             tool_call_id=tool_call_id
@@ -142,16 +161,22 @@ def chat():
                     )
             
             # Get final response from LLM with tool results
-            final_response = llm_with_tools.invoke(messages)
+            final_response = llm_with_tools.invoke(conversations[conv_id])
+            conversations[conv_id].append(final_response)
             bot_message = final_response.content
         else:
+            # Direct response without tool calls
+            # Add the response to history
+            conversations[conv_id].append(response)
+
             # Direct response without tool calls
             bot_message = response.content
         
         return jsonify({
             'message': bot_message,
             'status': 'success',
-            'tool_logs': tool_logs
+            'tool_logs': tool_logs,
+            'conversation_length': len(conversations[conv_id])
         })
         
     except Exception as e:
@@ -162,6 +187,58 @@ def chat():
             'message': f'An error occurred: {str(e)}',
             'status': 'error'
         }), 500
+
+
+@app.route('/reset', methods=['POST'])
+def reset_conversation():
+    """Reset the conversation history for the current session."""
+    if 'conversation_id' in session:
+        conv_id = session['conversation_id']
+        if conv_id in conversations:
+            del conversations[conv_id]
+            print(f"[RESET] Cleared conversation history for {conv_id}")
+        
+        # Create new conversation ID
+        session['conversation_id'] = str(uuid.uuid4())
+        print(f"[RESET] New conversation ID: {session['conversation_id']}")
+        
+        return jsonify({
+            'message': 'Conversation reset successfully.',
+            'status': 'success'
+        })
+    
+    return jsonify({
+        'message': 'No active conversation to reset.',
+        'status': 'info'
+    })
+
+
+@app.route('/history', methods=['GET'])
+def get_history():
+    """Get the current conversation history (for debugging)."""
+    if 'conversation_id' in session:
+        conv_id = session['conversation_id']
+        if conv_id in conversations:
+            history = []
+            for msg in conversations[conv_id]:
+                if isinstance(msg, HumanMessage):
+                    history.append({'role': 'user', 'content': msg.content})
+                elif isinstance(msg, AIMessage):
+                    history.append({'role': 'assistant', 'content': msg.content})
+                elif isinstance(msg, ToolMessage):
+                    history.append({'role': 'tool', 'content': msg.content})
+            
+            return jsonify({
+                'conversation_id': conv_id,
+                'history': history,
+                'message_count': len(conversations[conv_id])
+            })
+    
+    return jsonify({
+        'message': 'No conversation history found.',
+        'status': 'info'
+    })
+
 
 
 if __name__ == '__main__':
