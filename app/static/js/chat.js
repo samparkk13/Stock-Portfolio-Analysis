@@ -1,9 +1,194 @@
-// Chat functionality
+// Chat functionality with portfolio input
 const chatMessages = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
 const sendButton = document.getElementById('sendButton');
 const logContent = document.getElementById('logContent');
 const clearLogButton = document.getElementById('clearLogButton');
+
+// Portfolio modal elements
+const portfolioModal = document.getElementById('portfolioModal');
+const portfolioHoldings = document.getElementById('portfolioHoldings');
+const tickerInput = document.getElementById('tickerInput');
+const sharesInput = document.getElementById('sharesInput');
+const addHoldingBtn = document.getElementById('addHoldingBtn');
+const savePortfolioBtn = document.getElementById('savePortfolioBtn');
+const skipPortfolioBtn = document.getElementById('skipPortfolioBtn');
+const editPortfolioBtn = document.getElementById('editPortfolioBtn');
+const portfolioStatus = document.getElementById('portfolioStatus');
+
+// Store portfolio locally
+let userPortfolio = {};
+
+// Example portfolios
+const examplePortfolios = {
+    conservative: {
+        'VOO': 10,  // S&P 500 ETF
+        'BND': 15,  // Bond ETF
+        'GLD': 5    // Gold ETF
+    },
+    tech: {
+        'AAPL': 10,
+        'MSFT': 8,
+        'GOOGL': 5,
+        'NVDA': 6
+    },
+    diversified: {
+        'VOO': 10,   // S&P 500
+        'QQQ': 8,    // NASDAQ
+        'VNQ': 5,    // Real Estate
+        'BND': 7     // Bonds
+    }
+};
+
+// Show portfolio modal on first load
+window.addEventListener('load', () => {
+    checkPortfolio();
+});
+
+function checkPortfolio() {
+    // Check if user has portfolio
+    fetch('/get_portfolio')
+        .then(response => response.json())
+        .then(data => {
+            if (data.has_portfolio && Object.keys(data.portfolio).length > 0) {
+                userPortfolio = data.portfolio;
+                updatePortfolioStatus();
+            } else {
+                // Show modal on first visit
+                portfolioModal.style.display = 'flex';
+            }
+        });
+}
+
+function updatePortfolioStatus() {
+    const holdings = Object.keys(userPortfolio).length;
+    if (holdings > 0) {
+        const summary = Object.entries(userPortfolio)
+            .map(([ticker, shares]) => `${shares} ${ticker}`)
+            .join(', ');
+        portfolioStatus.textContent = `Portfolio: ${summary}`;
+    } else {
+        portfolioStatus.textContent = 'No portfolio set';
+    }
+}
+
+function renderPortfolioHoldings() {
+    portfolioHoldings.innerHTML = '';
+    
+    if (Object.keys(userPortfolio).length === 0) {
+        portfolioHoldings.innerHTML = '<p class="no-holdings">No holdings yet. Add some stocks below!</p>';
+        return;
+    }
+    
+    for (const [ticker, shares] of Object.entries(userPortfolio)) {
+        const holdingDiv = document.createElement('div');
+        holdingDiv.className = 'holding-item';
+        holdingDiv.innerHTML = `
+            <span class="holding-ticker">${ticker}</span>
+            <span class="holding-shares">${shares} shares</span>
+            <button class="remove-btn" onclick="removeHolding('${ticker}')">×</button>
+        `;
+        portfolioHoldings.appendChild(holdingDiv);
+    }
+}
+
+function addHolding() {
+    const ticker = tickerInput.value.trim().toUpperCase();
+    const shares = parseInt(sharesInput.value);
+    
+    if (!ticker || !shares || shares <= 0) {
+        alert('Please enter a valid ticker and number of shares');
+        return;
+    }
+    
+    userPortfolio[ticker] = shares;
+    renderPortfolioHoldings();
+    
+    // Clear inputs
+    tickerInput.value = '';
+    sharesInput.value = '';
+    tickerInput.focus();
+}
+
+function removeHolding(ticker) {
+    delete userPortfolio[ticker];
+    renderPortfolioHoldings();
+}
+
+function savePortfolio() {
+    if (Object.keys(userPortfolio).length === 0) {
+        alert('Please add at least one holding to your portfolio');
+        return;
+    }
+    
+    // Save to backend
+    fetch('/set_portfolio', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ portfolio: userPortfolio })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Close modal
+            portfolioModal.style.display = 'none';
+            updatePortfolioStatus();
+            
+            // Add welcome message with portfolio summary
+            const holdingsList = Object.entries(userPortfolio)
+                .map(([ticker, shares]) => `${shares} shares of ${ticker}`)
+                .join(', ');
+            
+            addMessage(`Perfect! I've recorded your portfolio: ${holdingsList}. How can I help you analyze it?`, 'bot');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving portfolio:', error);
+        alert('Failed to save portfolio. Please try again.');
+    });
+}
+
+function skipPortfolio() {
+    portfolioModal.style.display = 'none';
+    addMessage("No problem! You can add your portfolio later by clicking the edit button in the header. In the meantime, feel free to ask me about any stocks or portfolios!", 'bot');
+}
+
+// Event listeners for portfolio modal
+addHoldingBtn.addEventListener('click', addHolding);
+savePortfolioBtn.addEventListener('click', savePortfolio);
+skipPortfolioBtn.addEventListener('click', skipPortfolio);
+editPortfolioBtn.addEventListener('click', () => {
+    renderPortfolioHoldings();
+    portfolioModal.style.display = 'flex';
+});
+
+// Allow Enter key to add holding
+tickerInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        if (tickerInput.value.trim()) {
+            sharesInput.focus();
+        }
+    }
+});
+
+sharesInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addHolding();
+    }
+});
+
+// Example portfolio buttons
+document.querySelectorAll('.example-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const example = btn.dataset.example;
+        userPortfolio = {...examplePortfolios[example]};
+        renderPortfolioHoldings();
+    });
+});
 
 // Auto-resize textarea
 chatInput.addEventListener('input', function() {
@@ -229,7 +414,9 @@ function clearLog() {
     `;
 }
 
-// Focus input on load
+// Focus input on load (after checking portfolio)
 window.addEventListener('load', () => {
-    chatInput.focus();
+    setTimeout(() => {
+        chatInput.focus();
+    }, 500);
 });

@@ -127,6 +127,8 @@ def index():
     return render_template('index.html')
 
 conversations = {}
+portfolios = {}
+
 @app.route('/chat', methods=['POST'])
 def chat():
     """Handle chat messages from the frontend."""
@@ -158,6 +160,10 @@ def chat():
         if conv_id not in conversations:
             conversations[conv_id] = []
             print(f"[NEW CONVERSATION] Initialized history for {conv_id}")
+    
+        # Initialize portfolio storage if new
+        if conv_id not in portfolios:
+            portfolios[conv_id] = {}
         
         # Add user message to conversation history
         conversations[conv_id].append(HumanMessage(content=user_message))
@@ -173,26 +179,22 @@ def chat():
         if response.tool_calls:
             # Build the message history with proper ToolMessage objects
             conversations[conv_id].append(response)
-            messages = [HumanMessage(content=user_message), response]
             
             for tool_call in response.tool_calls:
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
                 tool_call_id = tool_call["id"]
 
-                # need to remove this later once we have memory
-                if tool_name in [
-                    "get_portfolio_diversification",
-                    "get_portfolio_value",
-                    "rebalance_equal_weight"
-                ]:
-                    # If the model forgot to pass it, inject it manually
+                if tool_name in ["get_portfolio_value", "get_portfolio_diversification", "rebalance_equal_weight"]:
                     if "portfolio" not in tool_args or not tool_args["portfolio"]:
-                        tool_args["portfolio"] = {
-                            "VOO": 10,
-                            "AAPL": 20,
-                            "QQQ": 10
-                        }
+                        # Use stored portfolio if available
+                        if portfolios[conv_id]:
+                            tool_args["portfolio"] = portfolios[conv_id]
+                            print(f"[PORTFOLIO] Injected stored portfolio: {portfolios[conv_id]}")
+                        else:
+                            # Fallback to example portfolio
+                            tool_args["portfolio"] = {"VOO": 10, "AAPL": 20, "QQQ": 10}
+                            print("[PORTFOLIO] No stored portfolio, using example")
 
                 
                 # Log tool call
@@ -203,8 +205,6 @@ def chat():
                 
                 if tool_name in tools_map:
                     result = tools_map[tool_name].invoke(tool_args)
-                    
-                    # Add result to log
                     tool_logs[-1]['result'] = str(result)
 
                     conversations[conv_id].append(
@@ -230,7 +230,8 @@ def chat():
             'message': bot_message,
             'status': 'success',
             'tool_logs': tool_logs,
-            'conversation_length': len(conversations[conv_id])
+            'conversation_length': len(conversations[conv_id]),
+            'has_portfolio': bool(portfolios.get(conv_id, {}))
         })
         
     except Exception as e:
@@ -242,6 +243,64 @@ def chat():
             'status': 'error'
         }), 500
 
+@app.route('/set_portfolio', methods=['POST'])
+def set_portfolio():
+    """Store user's portfolio in session."""
+    data = request.json
+    portfolio = data.get('portfolio', {})
+    
+    if not portfolio:
+        return jsonify({
+            'message': 'No portfolio provided.',
+            'status': 'error'
+        }), 400
+    
+    # Get or create session
+    if 'conversation_id' not in session:
+        session['conversation_id'] = str(uuid.uuid4())
+    
+    conv_id = session['conversation_id']
+    
+    # Store portfolio
+    portfolios[conv_id] = portfolio
+    
+    # Add system message to conversation about portfolio setup
+    if conv_id not in conversations:
+        conversations[conv_id] = []
+    
+    portfolio_str = ", ".join([f"{shares} shares of {ticker}" for ticker, shares in portfolio.items()])
+    
+    conversations[conv_id].append(
+        HumanMessage(content=f"My portfolio consists of: {portfolio_str}")
+    )
+    
+    print(f"[PORTFOLIO] Stored portfolio for {conv_id}: {portfolio}")
+    
+    return jsonify({
+        'message': 'Portfolio saved successfully!',
+        'portfolio': portfolio,
+        'status': 'success'
+    })
+
+
+@app.route('/get_portfolio', methods=['GET'])
+def get_portfolio():
+    """Retrieve user's stored portfolio."""
+    if 'conversation_id' in session:
+        conv_id = session['conversation_id']
+        portfolio = portfolios.get(conv_id, {})
+        
+        return jsonify({
+            'portfolio': portfolio,
+            'has_portfolio': bool(portfolio),
+            'status': 'success'
+        })
+    
+    return jsonify({
+        'portfolio': {},
+        'has_portfolio': False,
+        'status': 'info'
+    })
 
 @app.route('/reset', methods=['POST'])
 def reset_conversation():
