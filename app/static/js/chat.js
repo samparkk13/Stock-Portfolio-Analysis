@@ -296,7 +296,13 @@ function addMessage(text, type) {
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
-    contentDiv.innerHTML = `<p>${escapeHtml(text)}</p>`;
+    
+    // Render markdown for bot messages, escape HTML for user messages
+    if (type === 'bot') {
+        contentDiv.innerHTML = marked.parse(text);
+    } else {
+        contentDiv.innerHTML = `<p>${escapeHtml(text)}</p>`;
+    }
     
     messageDiv.appendChild(avatarDiv);
     messageDiv.appendChild(contentDiv);

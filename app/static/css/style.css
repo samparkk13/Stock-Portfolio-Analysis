@@ -324,8 +324,127 @@ body {
 
 .message-content p {
     font-size: 15px;
-    line-height: 1.5;
-    margin: 0;
+    line-height: 1.6;
+    margin: 0 0 12px 0;
+}
+
+.message-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Markdown-specific styles for bot messages */
+.bot-message .message-content h1,
+.bot-message .message-content h2,
+.bot-message .message-content h3,
+.bot-message .message-content h4,
+.bot-message .message-content h5,
+.bot-message .message-content h6 {
+    font-weight: 600;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.bot-message .message-content h1:first-child,
+.bot-message .message-content h2:first-child,
+.bot-message .message-content h3:first-child {
+    margin-top: 0;
+}
+
+.bot-message .message-content h1 { font-size: 20px; }
+.bot-message .message-content h2 { font-size: 18px; }
+.bot-message .message-content h3 { font-size: 16px; }
+
+.bot-message .message-content strong {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.bot-message .message-content ul,
+.bot-message .message-content ol {
+    margin: 12px 0;
+    padding-left: 24px;
+}
+
+.bot-message .message-content ul {
+    list-style-type: disc;
+}
+
+.bot-message .message-content ol {
+    list-style-type: decimal;
+}
+
+.bot-message .message-content li {
+    margin: 6px 0;
+    line-height: 1.6;
+    padding-left: 4px;
+}
+
+.bot-message .message-content ul ul,
+.bot-message .message-content ol ul {
+    list-style-type: circle;
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+.bot-message .message-content ul ul ul,
+.bot-message .message-content ol ul ul {
+    list-style-type: square;
+}
+
+.bot-message .message-content code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    color: #e11d48;
+}
+
+.bot-message .message-content pre {
+    background: #f1f5f9;
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 12px 0;
+}
+
+.bot-message .message-content pre code {
+    background: transparent;
+    padding: 0;
+    color: #1e293b;
+}
+
+.bot-message .message-content blockquote {
+    border-left: 4px solid #667eea;
+    padding-left: 16px;
+    margin: 12px 0;
+    color: #64748b;
+    font-style: italic;
+}
+
+.bot-message .message-content hr {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 16px 0;
+}
+
+.bot-message .message-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+}
+
+.bot-message .message-content th,
+.bot-message .message-content td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.bot-message .message-content th {
+    background: #f9fafb;
+    font-weight: 600;
 }
 
 /* Typing Indicator */
