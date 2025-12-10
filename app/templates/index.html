@@ -10,6 +10,40 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Portfolio Input Modal -->
+    <div class="portfolio-modal" id="portfolioModal">
+        <div class="portfolio-modal-content">
+            <div class="portfolio-modal-header">
+                <h2>📊 Welcome! Set Up Your Portfolio</h2>
+                <p>Enter your stock holdings to get personalized analysis</p>
+            </div>
+            
+            <div class="portfolio-input-section">
+                <div class="portfolio-holdings" id="portfolioHoldings">
+                    <!-- Holdings will be added here -->
+                </div>
+                
+                <div class="add-holding-form">
+                    <input type="text" id="tickerInput" placeholder="Ticker (e.g., AAPL)" class="holding-input">
+                    <input type="number" id="sharesInput" placeholder="Shares" class="holding-input" min="1">
+                    <button id="addHoldingBtn" class="add-btn">+ Add</button>
+                </div>
+            </div>
+
+            <div class="portfolio-examples">
+                <p class="examples-label">Quick examples:</p>
+                <button class="example-btn" data-example="conservative">Conservative Portfolio</button>
+                <button class="example-btn" data-example="tech">Tech-Heavy Portfolio</button>
+                <button class="example-btn" data-example="diversified">Diversified Portfolio</button>
+            </div>
+            
+            <div class="portfolio-modal-actions">
+                <button id="skipPortfolioBtn" class="skip-btn">Skip for now</button>
+                <button id="savePortfolioBtn" class="save-btn">Save Portfolio & Continue</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Backend Log Panel -->
         <div class="log-panel" id="logPanel">
@@ -62,10 +96,16 @@
                         <h1>Stock Portfolio Assistant</h1>
                         <p class="status">
                             <span class="status-dot"></span>
-                            Online
+                            <span id="portfolioStatus">No portfolio set</span>
                         </p>
                     </div>
                 </div>
+                <button id="editPortfolioBtn" class="edit-portfolio-btn" title="Edit portfolio">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                </button>
             </div>
 
             <!-- Chat Messages Area -->
@@ -82,7 +122,8 @@
                         </svg>
                     </div>
                     <div class="message-content">
-                        <p>Hello! I'm your Stock Portfolio Assistant. I can help you analyze stocks, check prices, and manage your portfolio. How can I assist you today?</p>
+                        <p>Hello! I'm your Stock Portfolio Assistant. I can help you analyze stocks, check prices, and manage your portfolio.</p>
+                        <p style="margin-top: 8px;">💡 <strong>Tip:</strong> Set up your portfolio to get personalized analysis!</p>
                     </div>
                 </div>
             </div>
