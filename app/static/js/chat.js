@@ -228,6 +228,9 @@ function sendMessage() {
     // Show typing indicator
     showTypingIndicator();
     
+    // Track start time
+    const startTime = Date.now();
+    
     // Send message to backend
     fetch('/chat', {
         method: 'POST',
@@ -238,12 +241,15 @@ function sendMessage() {
     })
     .then(response => response.json())
     .then(data => {
+        // Calculate response time
+        const responseTime = ((Date.now() - startTime) / 1000).toFixed(2);
+        
         // Remove typing indicator
         removeTypingIndicator();
         
         // Add bot response
         if (data.status === 'success') {
-            addMessage(data.message, 'bot');
+            addMessage(data.message, 'bot', responseTime);
             
             // Add tool logs if any
             if (data.tool_logs && data.tool_logs.length > 0) {
@@ -252,7 +258,7 @@ function sendMessage() {
                 });
             }
         } else {
-            addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+            addMessage('Sorry, I encountered an error. Please try again.', 'bot', responseTime);
         }
         
         // Re-enable input
@@ -260,13 +266,14 @@ function sendMessage() {
     })
     .catch(error => {
         console.error('Error:', error);
+        const responseTime = ((Date.now() - startTime) / 1000).toFixed(2);
         removeTypingIndicator();
-        addMessage('Sorry, I encountered an error connecting to the server.', 'bot');
+        addMessage('Sorry, I encountered an error connecting to the server.', 'bot', responseTime);
         setInputState(true);
     });
 }
 
-function addMessage(text, type) {
+function addMessage(text, type, responseTime = null) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}-message`;
     
@@ -294,6 +301,9 @@ function addMessage(text, type) {
         `;
     }
     
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'message-wrapper';
+    
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
     
@@ -304,8 +314,18 @@ function addMessage(text, type) {
         contentDiv.innerHTML = `<p>${escapeHtml(text)}</p>`;
     }
     
+    contentWrapper.appendChild(contentDiv);
+    
+    // Add response time for bot messages if provided
+    if (type === 'bot' && responseTime !== null) {
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'response-time';
+        timeDiv.textContent = `${responseTime}s`;
+        contentWrapper.appendChild(timeDiv);
+    }
+    
     messageDiv.appendChild(avatarDiv);
-    messageDiv.appendChild(contentDiv);
+    messageDiv.appendChild(contentWrapper);
     
     chatMessages.appendChild(messageDiv);
     scrollToBottom();

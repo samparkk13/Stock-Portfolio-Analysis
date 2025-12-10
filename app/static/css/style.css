@@ -300,6 +300,12 @@ body {
     flex-shrink: 0;
 }
 
+.message-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
 .bot-message .message-avatar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -445,6 +451,18 @@ body {
 .bot-message .message-content th {
     background: #f9fafb;
     font-weight: 600;
+}
+
+/* Response time display */
+.response-time {
+    font-size: 11px;
+    color: #94a3b8;
+    padding: 4px 8px;
+    background: #f1f5f9;
+    border-radius: 6px;
+    align-self: flex-start;
+    font-weight: 500;
+    letter-spacing: 0.3px;
 }
 
 /* Typing Indicator */
