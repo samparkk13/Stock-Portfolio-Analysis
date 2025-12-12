@@ -1,17 +1,3 @@
-"""
-Financial calculation & portfolio analysis tools
-for the Stock Portfolio Chatbot.
-
-Includes:
-- Price lookup (yfinance)
-- Portfolio value
-- Volatility and beta
-- Diversification scoring (sector concentration)
-- Smart rebalancing (risk profile)
-- Stock suggestions (based on user goals)
-- Portfolio adjustment recommendations
-"""
-
 import yfinance as yf
 import numpy as np
 from datetime import datetime
