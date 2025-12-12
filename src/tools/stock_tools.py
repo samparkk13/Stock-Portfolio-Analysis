@@ -17,18 +17,12 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-# ------------------------------------------------------------
-# Helper: Fetch ticker safely
-# ------------------------------------------------------------
 def fetch_ticker(ticker: str):
     try:
         return yf.Ticker(ticker)
     except Exception:
         return None
 
-# ------------------------------------------------------------
-# 1. STOCK PRICE LOOKUP
-# ------------------------------------------------------------
 def get_stock_price(ticker: str) -> Dict[str, Any]:
     ticker = ticker.upper()
     try:
@@ -60,10 +54,6 @@ def get_stock_price(ticker: str) -> Dict[str, Any]:
             "error": f"Price fetch failed: {e}"
         }
 
-
-# ------------------------------------------------------------
-# 2. MULTIPLE STOCK PRICES
-# ------------------------------------------------------------
 def get_multiple_stock_prices(tickers: list) -> Dict[str, Dict[str, Any]]:
     results = {}
     for t in tickers:
@@ -71,9 +61,6 @@ def get_multiple_stock_prices(tickers: list) -> Dict[str, Dict[str, Any]]:
     return results
 
 
-# ------------------------------------------------------------
-# 3. PORTFOLIO VALUE
-# ------------------------------------------------------------
 def get_portfolio_value(portfolio: Dict[str, int]) -> Dict[str, Any]:
     total = 0
     details = {}
@@ -100,10 +87,6 @@ def get_portfolio_value(portfolio: Dict[str, int]) -> Dict[str, Any]:
         "success": True
     }
 
-
-# ------------------------------------------------------------
-# 4. VOLATILITY (ANNUALIZED)
-# ------------------------------------------------------------
 def get_stock_volatility(ticker: str) -> Dict[str, Any]:
     try:
         stock = yf.Ticker(ticker)
@@ -123,10 +106,6 @@ def get_stock_volatility(ticker: str) -> Dict[str, Any]:
     except Exception as e:
         return {"ticker": ticker.upper(), "success": False, "error": str(e)}
 
-
-# ------------------------------------------------------------
-# 5. BETA (VS SPY)
-# ------------------------------------------------------------
 def get_stock_beta(ticker: str) -> Dict[str, Any]:
     try:
         stock = yf.Ticker(ticker)
@@ -154,9 +133,6 @@ def get_stock_beta(ticker: str) -> Dict[str, Any]:
         return {"ticker": ticker.upper(), "success": False, "error": str(e)}
 
 
-# ------------------------------------------------------------
-# 6. DIVERSIFICATION SCORE (SECTOR-BASED)
-# ------------------------------------------------------------
 def get_portfolio_diversification(portfolio: Dict[str, int]) -> Dict[str, Any]:
     sectors = {}
     total_value = 0
@@ -189,10 +165,8 @@ def get_portfolio_diversification(portfolio: Dict[str, int]) -> Dict[str, Any]:
             "error": "No valid stock prices found."
         }
 
-    # Normalize sector weights
     weights = {sector: value / total_value for sector, value in sectors.items()}
 
-    # Diversification score = 1 - sum(weight^2)  (Herfindahl index)
     hhi = sum(w * w for w in weights.values())
     score = 1 - hhi
 
@@ -203,10 +177,6 @@ def get_portfolio_diversification(portfolio: Dict[str, int]) -> Dict[str, Any]:
         "details": details
     }
 
-
-# ------------------------------------------------------------
-# 7. EQUAL-WEIGHT REBALANCING
-# ------------------------------------------------------------
 def rebalance_equal_weight(portfolio: Dict[str, int]) -> Dict[str, Any]:
     value_data = get_portfolio_value(portfolio)
     total_value = value_data["portfolio_value"]
@@ -230,10 +200,6 @@ def rebalance_equal_weight(portfolio: Dict[str, int]) -> Dict[str, Any]:
         "adjustments": adjustments
     }
 
-
-# ------------------------------------------------------------
-# 8. SMART REBALANCING (RISK PROFILE)
-# ------------------------------------------------------------
 RISK_PROFILES = {
     "conservative": {
         "VOO": 0.50, "BND": 0.30, "GLD": 0.10, "AAPL": 0.05, "QQQ": 0.05
@@ -265,10 +231,6 @@ def rebalance_by_risk_profile(portfolio: Dict[str, int], risk_profile: str):
         "notes": "You should shift toward these allocations to match risk profile."
     }
 
-
-# ------------------------------------------------------------
-# 9. STOCK SUGGESTIONS (GOAL-BASED)
-# ------------------------------------------------------------
 GOAL_SUGGESTIONS = {
     "growth": ["NVDA", "TSLA", "AAPL", "AMD"],
     "income": ["JNJ", "PG", "KO", "O", "VZ"],
@@ -287,10 +249,6 @@ def suggest_stocks_by_goal(goal: str):
         "suggestions": GOAL_SUGGESTIONS[goal]
     }
 
-
-# ------------------------------------------------------------
-# 10. PORTFOLIO ADJUSTMENT RECOMMENDATIONS
-# ------------------------------------------------------------
 def recommend_portfolio_adjustments(portfolio: Dict[str, int], goal: str):
     suggestion = suggest_stocks_by_goal(goal)
 
@@ -311,12 +269,6 @@ def recommend_portfolio_adjustments(portfolio: Dict[str, int], goal: str):
     }
 
 def rebalance_by_risk_profile(portfolio: dict, risk: str = "moderate") -> dict:
-    """
-    Rebalance a portfolio based on the user's risk appetite.
-    Risk levels: conservative, moderate, aggressive.
-    
-    Returns recommended % allocations and suggested trades.
-    """
     risk = risk.lower().strip()
 
     profiles = {
@@ -354,10 +306,6 @@ def rebalance_by_risk_profile(portfolio: dict, risk: str = "moderate") -> dict:
 
 
 def suggest_stocks_for_goal(goal: str) -> dict:
-    """
-    Suggests stocks based on a user's investing goal.
-    Goals include: growth, income, balanced, tech, value.
-    """
 
     goal = goal.lower().strip()
 
