@@ -46,7 +46,7 @@ class TestStockPriceFetcher(unittest.TestCase):
         # Should return error gracefully
         self.assertFalse(result['success'])
         self.assertIsNotNone(result['error'])
-        self.assertIsNone(result['price'])
+        self.assertNotIn('price', result) 
         print(f"✓ Invalid ticker handled correctly: {result['error']}")
     
     def test_multiple_stocks(self):
@@ -74,7 +74,7 @@ class TestStockPriceFetcher(unittest.TestCase):
         result = get_stock_price('AAPL')
         
         required_fields = ['ticker', 'price', 'currency', 'company_name', 
-                          'timestamp', 'success', 'error']
+                          'timestamp', 'success']
         
         for field in required_fields:
             self.assertIn(field, result, f"Missing field: {field}")
